@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lookup CF Access Control — Solutions Prototype</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f5;
+    color: #1e1f21;
+    min-height: 100vh;
+  }
+
+  /* ── Top nav ── */
+  .top-bar {
+    background: #fff;
+    border-bottom: 1px solid #e8e8e8;
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  .top-bar-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b6f76;
+    margin-right: 32px;
+    padding: 16px 0;
+    white-space: nowrap;
+  }
+
+  .tab-list {
+    display: flex;
+    gap: 0;
+    list-style: none;
+  }
+
+  .tab-btn {
+    padding: 16px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b6f76;
+    border-bottom: 3px solid transparent;
+    transition: color .15s, border-color .15s;
+    white-space: nowrap;
+    position: relative;
+  }
+
+  .tab-btn:hover { color: #1e1f21; }
+
+  .tab-btn.active {
+    color: #4573d2;
+    border-bottom-color: #4573d2;
+  }
+
+  .tab-badge {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    vertical-align: middle;
+  }
+
+  .badge-breaking { background: #fde8e8; color: #c0392b; }
+  .badge-moderate { background: #fff3cd; color: #856404; }
+  .badge-complex  { background: #e8f0fe; color: #2a5bd7; }
+
+  /* ── Layout ── */
+  .page { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  .solution-header {
+    margin-bottom: 28px;
+  }
+
+  .solution-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .solution-subtitle {
+    font-size: 14px;
+    color: #6b6f76;
+    max-width: 680px;
+    line-height: 1.6;
+  }
+
+  .pros-cons {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .pros-cons-card {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 10px;
+    padding: 16px 20px;
+  }
+
+  .pros-cons-card h4 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .pros-cons-card.pros h4 { color: #1a7f4b; }
+  .pros-cons-card.cons h4 { color: #c0392b; }
+
+  .pros-cons-card ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pros-cons-card li {
+    font-size: 13px;
+    color: #444;
+    line-height: 1.5;
+    padding-left: 18px;
+    position: relative;
+  }
+
+  .pros-cons-card.pros li::before { content: "✓"; position: absolute; left: 0; color: #1a7f4b; font-weight: 700; }
+  .pros-cons-card.cons li::before { content: "✗"; position: absolute; left: 0; color: #c0392b; font-weight: 700; }
+
+  /* ── Demo area ── */
+  .demo-area {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  .demo-column {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .demo-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #9b9b9b;
+    margin-bottom: 10px;
+  }
+
+  /* ── Modal card ── */
+  .modal-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,.10);
+  }
+
+  .modal-body { padding: 24px 24px 20px; }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+
+  .modal-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .modal-title { font-size: 18px; font-weight: 700; }
+
+  .field-group { margin-bottom: 18px; }
+
+  .field-label {
+    font-size: 13px;
+    color: #6b6f76;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .required { color: #c0392b; }
+
+  .field-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1e1f21;
+    background: #fff;
+  }
+
+  .field-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1e1f21;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+
+  .field-select-inner { display: flex; align-items: center; gap: 8px; }
+
+  .select-icon { font-size: 15px; }
+
+  .chevron { color: #9b9b9b; font-size: 13px; }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fafafa;
+  }
+
+  .footer-left { font-size: 13px; color: #6b6f76; cursor: pointer; }
+  .footer-left:hover { color: #1e1f21; }
+
+  .btn-group { display: flex; gap: 10px; }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity .15s;
+  }
+
+  .btn:hover { opacity: .88; }
+
+  .btn-secondary {
+    background: #fff;
+    border: 1.5px solid #d0d0d0;
+    color: #1e1f21;
+  }
+
+  .btn-primary {
+    background: #4573d2;
+    color: #fff;
+  }
+
+  /* ── Warning / Notice banners ── */
+  .notice {
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.55;
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .notice-icon { flex-shrink: 0; font-size: 15px; }
+
+  .notice-warning { background: #fff8e6; border: 1px solid #f5c542; }
+  .notice-info    { background: #e8f0fe; border: 1px solid #4573d2; }
+  .notice-danger  { background: #fdf0f0; border: 1px solid #e57373; }
+  .notice-success { background: #edf7f2; border: 1px solid #2eb67d; }
+
+  .notice strong { font-weight: 700; }
+
+  /* ── Access grant chip ── */
+  .access-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f0f4ff;
+    border: 1px solid #c5d3f5;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2a5bd7;
+    margin-top: 6px;
+  }
+
+  /* ── Toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+  }
+
+  .toggle-label-group { display: flex; flex-direction: column; gap: 2px; }
+  .toggle-label { font-size: 14px; font-weight: 500; }
+  .toggle-desc  { font-size: 12px; color: #9b9b9b; }
+
+  .toggle {
+    width: 40px;
+    height: 22px;
+    border-radius: 11px;
+    background: #d0d0d0;
+    position: relative;
+    cursor: pointer;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+
+  .toggle.on { background: #4573d2; }
+
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left .2s;
+  }
+
+  .toggle.on::after { left: 21px; }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    border-top: 1px solid #f0f0f0;
+    margin: 16px 0;
+  }
+
+  /* ── Task row (right panel) ── */
+  .task-panel {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,.07);
+  }
+
+  .task-panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fafafa;
+  }
+
+  .task-panel-title { font-size: 15px; font-weight: 700; }
+
+  .task-fields { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .task-field-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .task-field-name {
+    font-size: 12px;
+    color: #9b9b9b;
+    width: 120px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .task-field-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e1f21;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* priority pill */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .pill-high   { background: #fde8e8; color: #c0392b; }
+  .pill-medium { background: #fff3cd; color: #856404; }
+  .pill-low    { background: #edf7f2; color: #1a7f4b; }
+  .pill-private { background: #f0f0f0; color: #9b9b9b; }
+
+  .pill-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .dot-high   { background: #c0392b; }
+  .dot-medium { background: #856404; }
+  .dot-low    { background: #1a7f4b; }
+  .dot-private{ background: #d0d0d0; }
+
+  /* proxy badge */
+  .proxy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #9b9b9b;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 2px 8px;
+    cursor: help;
+    position: relative;
+  }
+
+  .proxy-badge:hover .proxy-tooltip { display: block; }
+
+  .proxy-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1f21;
+    color: #fff;
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    width: 230px;
+    text-align: left;
+    line-height: 1.5;
+    z-index: 999;
+    white-space: normal;
+    pointer-events: none;
+  }
+
+  .proxy-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1e1f21;
+  }
+
+  /* lock icon */
+  .lock-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #9b9b9b;
+    font-style: italic;
+  }
+
+  /* ── User switch ── */
+  .user-switch {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid #d0d0d0;
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+
+  .user-chip.active {
+    border-color: #4573d2;
+    background: #e8f0fe;
+    font-weight: 600;
+    color: #2a5bd7;
+  }
+
+  .avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .av-blue  { background: #4573d2; }
+  .av-green { background: #1a7f4b; }
+  .av-red   { background: #c0392b; }
+
+  /* ── Audit trail ── */
+  .audit-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+
+  .audit-row:last-child { border-bottom: none; }
+
+  .audit-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d0d0d0;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .audit-dot.red   { background: #e57373; }
+  .audit-dot.blue  { background: #4573d2; }
+  .audit-dot.green { background: #2eb67d; }
+
+  .audit-text { font-size: 12px; color: #444; line-height: 1.5; }
+  .audit-time { font-size: 11px; color: #9b9b9b; margin-left: auto; flex-shrink: 0; }
+
+  /* ── Step indicator ── */
+  .steps {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+  }
+
+  .step {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #9b9b9b;
+    background: #fafafa;
+    text-align: center;
+    border-right: 1px solid #e0e0e0;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+
+  .step:last-child { border-right: none; }
+  .step.active { background: #4573d2; color: #fff; font-weight: 700; }
+  .step.done   { background: #edf7f2; color: #1a7f4b; }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.1);
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  .step.active .step-number { background: rgba(255,255,255,.3); }
+  .step.done .step-number { background: #2eb67d; color: #fff; }
+
+  /* ── Section heading ── */
+  .section-head {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #9b9b9b;
+    margin-bottom: 10px;
+    margin-top: 24px;
+  }
+
+  .section-head:first-child { margin-top: 0; }
+
+  /* ── Chain diagram ── */
+  .chain {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .chain-node {
+    flex: 1;
+    padding: 12px 14px;
+    font-size: 13px;
+    border-right: 1px solid #e0e0e0;
+    text-align: center;
+  }
+
+  .chain-node:last-child { border-right: none; }
+
+  .chain-node .node-label { font-size: 11px; color: #9b9b9b; margin-bottom: 3px; }
+  .chain-node .node-value { font-weight: 700; font-size: 14px; }
+
+  .chain-arrow {
+    padding: 0 4px;
+    color: #9b9b9b;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: #fafafa;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    align-self: stretch;
+    padding: 0 10px;
+  }
+
+  .chain-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+
+  .chain-check.pass { background: #edf7f2; color: #1a7f4b; }
+  .chain-check.fail { background: #fdf0f0; color: #c0392b; }
+
+  .chain-check-icon { font-size: 15px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 800px) {
+    .demo-area { flex-direction: column; }
+    .pros-cons { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top nav / tabs -->
+<div class="top-bar">
+  <span class="top-bar-title">Lookup CF — AC Solutions</span>
+  <ul class="tab-list">
+    <li>
+      <button class="tab-btn active" onclick="showTab(1, this)">
+        Option 1 — Force RCF Access Grant
+        <span class="tab-badge badge-breaking">Breaking change</span>
+      </button>
+    </li>
+    <li>
+      <button class="tab-btn" onclick="showTab(2, this)">
+        Option 2 — Proxy Actor Model
+        <span class="tab-badge badge-moderate">UX change</span>
+      </button>
+    </li>
+    <li>
+      <button class="tab-btn" onclick="showTab(3, this)">
+        Option 3 — Server-side AC Chaining
+        <span class="tab-badge badge-complex">Server-side</span>
+      </button>
+    </li>
+  </ul>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 1 — Force RCF Access Grant
+════════════════════════════════════════════════════════════ -->
+<div id="tab1" class="page active">
+  <div class="solution-header">
+    <div class="solution-title">Option 1 — Force RCF to Grant Access to Linked Objects</div>
+    <div class="solution-subtitle">
+      Right now a user can see a lookup value without having access to the record it came from. This option fixes that by making the Reference field automatically grant every task member read access to the linked records — so anyone who sees the value is guaranteed to have legitimate access to its source. This is already how A4D works.
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros-cons-card pros">
+      <h4>Pros</h4>
+      <ul>
+        <li>Clear UX change</li>
+        <li>No need to worry about bypassing AC because we'd be guaranteed anyone looking at the lookup field value would have access to the linked object's source field</li>
+      </ul>
+    </div>
+    <div class="pros-cons-card cons">
+      <h4>Cons</h4>
+      <ul>
+        <li>Breaking change for existing RCFs, since it silently expands the audience</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" onclick="setStep1(1)"><span class="step-number">1</span>Create Reference field</div>
+    <div class="step" onclick="setStep1(3)"><span class="step-number">2</span>Create Lookup field</div>
+  </div>
+
+  <div class="demo-area">
+
+    <!-- Left: Modal -->
+    <div class="demo-column">
+      <div class="demo-label">Field configuration</div>
+
+      <div id="s1-step1">
+        <div class="modal-card">
+          <div class="modal-body">
+            <div class="modal-header">
+              <div class="modal-icon">🔗</div>
+              <div class="modal-title">Reference</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Field name <span class="required">*</span></div>
+              <input class="field-input" value="Buildings" readonly />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Source collection <span class="required">*</span></div>
+              <div class="field-select">
+                <div class="field-select-inner">
+                  <span class="select-icon">⛁</span> Records in <strong>Residential properties</strong>
+                </div>
+                <span>✕</span>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-top:8px;cursor:pointer;">
+              <input type="checkbox" id="s1-grant-checkbox" checked onchange="toggleGrantAccess(this.checked)" /> Grant task members access to linked records
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-top:10px;cursor:pointer;">
+              <input type="checkbox" /> Filter selection
+            </label>
+          </div>
+          <div class="modal-footer">
+            <span class="footer-left">Advanced settings</span>
+            <div class="btn-group">
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" onclick="setStep1(3)">Create field</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Lookup field -->
+      <div id="s1-step3" style="display:none;">
+        <div class="modal-card">
+          <div class="modal-body">
+            <div class="modal-header">
+              <div class="modal-icon">🔗</div>
+              <div class="modal-title">Lookup field</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Field name <span class="required">*</span></div>
+              <input class="field-input" value="Building Priority" readonly />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Reference field <span class="required">*</span></div>
+              <div class="field-select">
+                <div class="field-select-inner"><span>🔗</span> Buildings</div>
+                <span class="chevron">∨</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Field to look up <span class="required">*</span></div>
+              <div class="field-select">
+                <div class="field-select-inner"><span>⊙</span> Priority</div>
+                <span class="chevron">∨</span>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <span class="footer-left">Advanced settings</span>
+            <div class="btn-group">
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary">Create field</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: Task view -->
+    <div class="demo-column">
+      <div class="demo-label">Task view — all users see the same value</div>
+
+      <div class="task-panel">
+        <div class="task-panel-header">
+          <span style="font-size:18px;">☐</span>
+          <span class="task-panel-title">Inspect unit 4B — water damage</span>
+        </div>
+        <div class="task-fields">
+          <div class="task-field-row">
+            <div class="task-field-name">Assignee</div>
+            <div class="task-field-value">
+              <div class="avatar av-blue">JL</div> Jamie Lee
+            </div>
+          </div>
+          <div class="task-field-row">
+            <div class="task-field-name">Buildings</div>
+            <div class="task-field-value" id="s1-tv-buildings">
+              <span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>
+            </div>
+          </div>
+          <div class="task-field-row">
+            <div class="task-field-name">Building Priority</div>
+            <div class="task-field-value" id="s1-tv-priority">
+              <span class="pill pill-high"><span class="pill-dot dot-high"></span>High</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 2 — Proxy Actor Model
+════════════════════════════════════════════════════════════ -->
+<div id="tab2" class="page">
+  <div class="solution-header">
+    <div class="solution-title">Option 2 — Per-field Proxy Actor Model</div>
+    <div class="solution-subtitle">
+      Instead of fetching the lookup value as <em>you</em>, the system fetches it as a designated proxy — usually the person who created the field. Everyone on the task sees the same value regardless of their own permissions, because it was retrieved using the proxy's credentials, not theirs. Asana Rules already work this way.
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros-cons-card pros">
+      <h4>Pros</h4>
+      <ul>
+        <li>There is precedence to this (e.g., Rules)</li>
+      </ul>
+    </div>
+    <div class="pros-cons-card cons">
+      <h4>Cons</h4>
+      <ul>
+        <li>Users have no mental model for "this field value was fetched on behalf of a proxy, not you." Need to surface this to them somehow.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="steps">
+    <div class="step active" id="s2-step-ref" onclick="setStep2('ref')"><span class="step-number">1</span>Create Reference field</div>
+    <div class="step" id="s2-step-lookup" onclick="setStep2('lookup')"><span class="step-number">2</span>Create Lookup field</div>
+    <div class="step" id="s2-step-task" onclick="setStep2('task')"><span class="step-number">3</span>Task view</div>
+  </div>
+
+  <!-- User POV toggle (only shown on task step) -->
+  <div id="u2-user-switch" style="display:none;">
+    <div class="section-head">Switch viewing perspective</div>
+    <div class="user-switch">
+      <div class="user-chip active" id="u2-admin" onclick="setUser2('admin')">
+        <div class="avatar av-blue">AD</div> Admin / Field creator
+      </div>
+      <div class="user-chip" id="u2-member" onclick="setUser2('member')">
+        <div class="avatar av-green">TM</div> Task member (no record access)
+      </div>
+      <div class="user-chip" id="u2-outsider" onclick="setUser2('outsider')">
+        <div class="avatar av-red">EX</div> External collaborator
+      </div>
+    </div>
+  </div>
+
+  <div class="demo-area">
+
+    <!-- Left: field config panels -->
+    <div class="demo-column" style="max-width:520px;">
+      <div class="demo-label">Field configuration — proxy actor assignment</div>
+
+      <!-- Step 1: Reference field -->
+      <div id="s2-ref">
+        <div class="modal-card">
+          <div class="modal-body">
+            <div class="modal-header">
+              <div class="modal-icon">🔗</div>
+              <div class="modal-title">Reference</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Field name <span class="required">*</span></div>
+              <input class="field-input" value="Buildings" readonly />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Source collection <span class="required">*</span></div>
+              <div class="field-select">
+                <div class="field-select-inner"><span class="select-icon">⛁</span> Records in <strong>Residential properties</strong></div>
+                <span>✕</span>
+              </div>
+            </div>
+
+            <div style="background:#f7f7f8;border:1px solid #e0e0e0;border-radius:8px;padding:10px 14px;font-size:12px;color:#6b6f76;margin-top:12px;">
+              Linked values are fetched using the field creator's access. All task members will see the same values.
+            </div>
+
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-top:14px;cursor:pointer;">
+              <input type="checkbox" /> Filter selection
+            </label>
+          </div>
+          <div class="modal-footer">
+            <span class="footer-left">Advanced settings</span>
+            <div class="btn-group">
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" onclick="setStep2('lookup')">Create field</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: Lookup field -->
+      <div id="s2-lookup" style="display:none;">
+        <div class="modal-card">
+          <div class="modal-body">
+            <div class="modal-header">
+              <div class="modal-icon">🔗</div>
+              <div class="modal-title">Lookup field</div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Field name <span class="required">*</span></div>
+              <input class="field-input" value="Building Priority" readonly />
+            </div>
+            <div class="field-group">
+              <div class="field-label">Reference field <span class="required">*</span></div>
+              <div class="field-select">
+                <div class="field-select-inner"><span>🔗</span> Buildings</div>
+                <span class="chevron">∨</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <div class="field-label">Field to look up <span class="required">*</span></div>
+              <div class="field-select">
+                <div class="field-select-inner"><span>⊙</span> Priority</div>
+                <span class="chevron">∨</span>
+              </div>
+            </div>
+
+            <div style="background:#f7f7f8;border:1px solid #e0e0e0;border-radius:8px;padding:10px 14px;font-size:12px;color:#6b6f76;margin-top:12px;">
+              Linked values are fetched using the field creator's access. All task members will see the same values.
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <span class="footer-left">Advanced settings</span>
+            <div class="btn-group">
+              <button class="btn btn-secondary">Cancel</button>
+              <button class="btn btn-primary" onclick="setStep2('task')">Create field</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div><!-- /s2-lookup -->
+
+    </div><!-- /demo-column left -->
+
+    <!-- Right: Task view (only shown on step 3) -->
+    <div class="demo-column" id="s2-task-panel" style="display:none;">
+      <div class="demo-label" id="u2-pov-label">Task view — Admin / Field creator</div>
+
+      <div class="task-panel">
+        <div class="task-panel-header">
+          <span style="font-size:18px;">☐</span>
+          <span class="task-panel-title">Inspect unit 4B — water damage</span>
+        </div>
+        <div class="task-fields">
+
+          <!-- Scenario switcher -->
+          <div style="display:flex;gap:8px;margin-bottom:4px;">
+            <button id="u2-sc-normal" onclick="setScenario2('normal')" style="flex:1;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #4573d2;background:#e8f0fe;color:#2a5bd7;">Proxy has access</button>
+            <button id="u2-sc-lost" onclick="setScenario2('lost')" style="flex:1;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6f76;">Proxy loses access</button>
+          </div>
+
+          <!-- Proxy attribution banner -->
+          <div id="u2-proxy-banner" style="display:flex;align-items:center;gap:8px;background:#f7f7f8;border:1px solid #e0e0e0;border-radius:8px;padding:9px 12px;font-size:12px;color:#6b6f76;">
+            <div class="avatar av-blue" style="width:20px;height:20px;font-size:9px;flex-shrink:0;">AD</div>
+            <span id="u2-banner-text">Values fetched using <strong>Admin User's</strong> access — you are the proxy.</span>
+          </div>
+
+          <div class="task-field-row" style="margin-top:4px;">
+            <div class="task-field-name">Assignee</div>
+            <div class="task-field-value">
+              <div class="avatar av-blue">JL</div> Jamie Lee
+            </div>
+          </div>
+          <div class="task-field-row">
+            <div class="task-field-name">Buildings</div>
+            <div class="task-field-value" id="u2-rcf-value">
+              <span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>
+            </div>
+          </div>
+          <div class="task-field-row">
+            <div class="task-field-name">Building Priority</div>
+            <div class="task-field-value" id="u2-lcf-value">
+              <span class="pill pill-high"><span class="pill-dot dot-high"></span>High</span>
+            </div>
+          </div>
+          <hr class="divider" />
+          <div id="u2-notice" class="notice notice-info" style="margin:0;">
+            <span class="notice-icon">ℹ️</span>
+            <div style="font-size:12px;" id="u2-notice-text">You created these fields and are the proxy actor. Values are fetched using your own access to Residential properties.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit log -->
+      <div class="section-head" style="margin-top:24px;">Proxy access log</div>
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px 16px;">
+        <div class="audit-row">
+          <div class="audit-dot blue"></div>
+          <div class="audit-text"><strong>Admin User</strong> created "Building Priority" lookup — proxy actor set to self</div>
+          <div class="audit-time">Today 9:41 AM</div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-dot green"></div>
+          <div class="audit-text">Field fetched value <strong>High</strong> from Oak Street Complex · Priority</div>
+          <div class="audit-time">Today 9:41 AM</div>
+        </div>
+        <div class="audit-row">
+          <div class="audit-dot blue"></div>
+          <div class="audit-text"><strong>Task member (TM)</strong> viewed task — saw lookup value via proxy</div>
+          <div class="audit-time">Today 10:12 AM</div>
+        </div>
+      </div>
+    </div><!-- /s2-task-panel -->
+  </div><!-- /demo-area -->
+</div><!-- /tab2 -->
+
+
+<!-- ══════════════════════════════════════════════════════════
+     TAB 3 — Server-side AC Chaining
+════════════════════════════════════════════════════════════ -->
+<div id="tab3" class="page">
+  <div class="solution-header">
+    <div class="solution-title">Option 3 — Server-side AC Chaining (LCF → RCF)</div>
+    <div class="solution-subtitle">
+      When someone requests a lookup value, the server walks the chain — Lookup field → Reference field → source record — and checks at each step whether that user actually has access. If they don't have visibility on the referenced record, the value is hidden. This all happens server-side, so the API and every client are protected automatically with no UI changes needed.
+    </div>
+  </div>
+
+  <div class="pros-cons">
+    <div class="pros-cons-card pros">
+      <h4>Pros</h4>
+      <ul>
+        <li>Protects API and client does not need to know about this</li>
+      </ul>
+    </div>
+    <div class="pros-cons-card cons">
+      <h4>Cons</h4>
+      <ul>
+        <li>May be complicated to implement this multi-object traversal in AC</li>
+        <li>Does this actually solve the issue? The read-path is fixed</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Chain diagram -->
+  <div class="section-head">AC traversal chain</div>
+  <div class="chain">
+    <div class="chain-node">
+      <div class="node-label">Lookup CF</div>
+      <div class="node-value">Building Priority</div>
+    </div>
+    <div class="chain-arrow">→</div>
+    <div class="chain-node">
+      <div class="node-label">Reference CF</div>
+      <div class="node-value">Buildings</div>
+    </div>
+    <div class="chain-arrow">→</div>
+    <div class="chain-node">
+      <div class="node-label">Source collection</div>
+      <div class="node-value">Residential properties</div>
+    </div>
+    <div class="chain-arrow">→</div>
+    <div class="chain-node">
+      <div class="node-label">Linked record</div>
+      <div class="node-value">Oak Street Complex</div>
+    </div>
+    <div class="chain-arrow">→</div>
+    <div class="chain-node">
+      <div class="node-label">Source field</div>
+      <div class="node-value">Priority → <strong>High</strong></div>
+    </div>
+  </div>
+
+  <!-- User switch -->
+  <div class="section-head">Switch viewing perspective</div>
+  <div class="user-switch">
+    <div class="user-chip active" id="u3-full" onclick="setUser3('full')">
+      <div class="avatar av-blue">AD</div> Full access (can see record)
+    </div>
+    <div class="user-chip" id="u3-partial" onclick="setUser3('partial')">
+      <div class="avatar av-green">TM</div> Task member (no record access)
+    </div>
+    <div class="user-chip" id="u3-guest" onclick="setUser3('guest')">
+      <div class="avatar av-red">GU</div> Guest (no project access)
+    </div>
+  </div>
+
+  <div class="demo-area">
+
+    <!-- Left: AC check steps -->
+    <div class="demo-column">
+      <div class="demo-label" id="u3-checks-label">Server-side AC checks for: Full access user</div>
+
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:16px 20px;" id="u3-checks">
+
+        <div class="chain-check pass" id="u3-c1">
+          <span class="chain-check-icon">✅</span>
+          <div><strong>Check 1:</strong> User can see the task → <em>pass</em></div>
+        </div>
+        <div class="chain-check pass" id="u3-c2">
+          <span class="chain-check-icon">✅</span>
+          <div><strong>Check 2:</strong> User can read the RCF (Buildings) → <em>pass</em></div>
+        </div>
+        <div class="chain-check pass" id="u3-c3">
+          <span class="chain-check-icon">✅</span>
+          <div><strong>Check 3:</strong> User has read access to source collection (Residential properties) → <em>pass</em></div>
+        </div>
+        <div class="chain-check pass" id="u3-c4">
+          <span class="chain-check-icon">✅</span>
+          <div><strong>Check 4:</strong> Linked record (Oak Street Complex) is visible to user → <em>pass</em></div>
+        </div>
+
+        <hr class="divider" />
+
+        <div style="padding:10px 12px;border-radius:8px;background:#edf7f2;color:#1a7f4b;font-size:13px;font-weight:700;" id="u3-result">
+          ✅ All checks pass — return value: <strong>High</strong>
+        </div>
+      </div>
+
+      <!-- Suppression note -->
+      <div class="notice notice-info" style="margin-top:16px;">
+        <span class="notice-icon">ℹ️</span>
+        <div style="font-size:12px;">
+          <strong>API behaviour:</strong> The same check runs on every API read. The raw denormalized value
+          is never returned to unauthorized callers — it is redacted server-side before the response is
+          serialized.
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Task panel -->
+    <div class="demo-column">
+      <div class="demo-label" id="u3-pov-label">Task view — Full access user</div>
+
+      <div class="task-panel">
+        <div class="task-panel-header">
+          <span style="font-size:18px;">☐</span>
+          <span class="task-panel-title">Inspect unit 4B — water damage</span>
+        </div>
+        <div class="task-fields">
+          <div class="task-field-row">
+            <div class="task-field-name">Assignee</div>
+            <div class="task-field-value">
+              <div class="avatar av-blue">JL</div> Jamie Lee
+            </div>
+          </div>
+          <div class="task-field-row">
+            <div class="task-field-name">Buildings</div>
+            <div class="task-field-value" id="u3-rcf">
+              <span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>
+            </div>
+          </div>
+          <div class="task-field-row">
+            <div class="task-field-name">Building Priority</div>
+            <div class="task-field-value" id="u3-lcf">
+              <span class="pill pill-high"><span class="pill-dot dot-high"></span>High</span>
+            </div>
+          </div>
+          <hr class="divider" />
+          <div class="notice notice-success" style="margin:0;" id="u3-task-notice">
+            <span class="notice-icon">✅</span>
+            <div style="font-size:12px;">You have access to the linked record. Full value returned.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison table -->
+      <div class="section-head" style="margin-top:24px;">What each user sees</div>
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:10px;overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#fafafa;border-bottom:1px solid #e0e0e0;">
+              <th style="text-align:left;padding:10px 14px;color:#6b6f76;font-weight:600;">User</th>
+              <th style="text-align:left;padding:10px 14px;color:#6b6f76;font-weight:600;">Buildings (RCF)</th>
+              <th style="text-align:left;padding:10px 14px;color:#6b6f76;font-weight:600;">Building Priority (LCF)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+              <td style="padding:10px 14px;display:flex;align-items:center;gap:6px;">
+                <div class="avatar av-blue" style="width:20px;height:20px;font-size:9px;">AD</div> Full access
+              </td>
+              <td style="padding:10px 14px;"><span style="color:#4573d2;">🔗 Oak Street Complex</span></td>
+              <td style="padding:10px 14px;"><span class="pill pill-high" style="font-size:11px;"><span class="pill-dot dot-high"></span>High</span></td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+              <td style="padding:10px 14px;display:flex;align-items:center;gap:6px;">
+                <div class="avatar av-green" style="width:20px;height:20px;font-size:9px;">TM</div> No record access
+              </td>
+              <td style="padding:10px 14px;"><span class="lock-value">🔒 Private object</span></td>
+              <td style="padding:10px 14px;"><span class="lock-value">🔒 Private value</span></td>
+            </tr>
+            <tr>
+              <td style="padding:10px 14px;display:flex;align-items:center;gap:6px;">
+                <div class="avatar av-red" style="width:20px;height:20px;font-size:9px;">GU</div> Guest
+              </td>
+              <td style="padding:10px 14px;"><span class="lock-value">🔒 Private object</span></td>
+              <td style="padding:10px 14px;"><span class="lock-value">🔒 Private value</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ── Option 1 access grant toggle ── */
+  function toggleGrantAccess(checked) {
+    const buildings = document.getElementById('s1-tv-buildings');
+    const priority  = document.getElementById('s1-tv-priority');
+    if (checked) {
+      buildings.innerHTML = '<span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>';
+      priority.innerHTML  = '<span class="pill pill-high"><span class="pill-dot dot-high"></span>High</span>';
+    } else {
+      buildings.innerHTML = '<span class="pill pill-private"><span class="pill-dot dot-private"></span>Private</span>';
+      priority.innerHTML  = '<span class="pill pill-private"><span class="pill-dot dot-private"></span>Private</span>';
+    }
+  }
+
+  /* ── Tab switching ── */
+  function showTab(n, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab' + n).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  /* ── Option 1 steps (1=ref field, 3=lookup field, 4=task view) ── */
+  function setStep1(n) {
+    const stepMap = [1, 3]; // maps visual step index 0,1 → real n values
+    const steps = document.querySelectorAll('#tab1 .step');
+    steps.forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (stepMap[i] < n) s.classList.add('done');
+      if (stepMap[i] === n) s.classList.add('active');
+    });
+    ['s1-step1','s1-step3'].forEach((id, i) => {
+      document.getElementById(id).style.display = (stepMap[i] === n) ? 'block' : 'none';
+    });
+  }
+
+  /* ── Option 2 step flow ── */
+  function setStep2(step) {
+    const steps = { ref: 0, lookup: 1, task: 2 };
+    const idx = steps[step];
+    document.querySelectorAll('#tab2 .step').forEach((s, i) => {
+      s.classList.remove('active', 'done');
+      if (i < idx) s.classList.add('done');
+      if (i === idx) s.classList.add('active');
+    });
+    document.getElementById('s2-ref').style.display    = step === 'ref'    ? 'block' : 'none';
+    document.getElementById('s2-lookup').style.display = step === 'lookup' ? 'block' : 'none';
+    document.getElementById('s2-task-panel').style.display  = step === 'task'   ? 'block' : 'none';
+    document.getElementById('u2-user-switch').style.display = step === 'task'   ? 'block' : 'none';
+  }
+
+  /* ── Option 2 user switch ── */
+  function toggleProxyBadge() {
+    const b = document.getElementById('u2-proxy-badge');
+    b.style.display = b.style.display === 'none' ? '' : 'none';
+  }
+
+  let u2Scenario = 'normal';
+
+  function setScenario2(scenario) {
+    u2Scenario = scenario;
+    const isLost = scenario === 'lost';
+
+    document.getElementById('u2-sc-normal').style.cssText = isLost
+      ? 'flex:1;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6f76;'
+      : 'flex:1;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #4573d2;background:#e8f0fe;color:#2a5bd7;';
+    document.getElementById('u2-sc-lost').style.cssText = isLost
+      ? 'flex:1;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #c0392b;background:#fde8e8;color:#c0392b;'
+      : 'flex:1;padding:7px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #d0d0d0;background:#fff;color:#6b6f76;';
+
+    const banner = document.getElementById('u2-proxy-banner');
+    const bannerText = document.getElementById('u2-banner-text');
+    const rcfEl = document.getElementById('u2-rcf-value');
+    const lcfEl = document.querySelector('#s2-task-panel .task-field-row:nth-child(5) .task-field-value');
+    const noticeEl = document.getElementById('u2-notice');
+    const noticeText = document.getElementById('u2-notice-text');
+
+    if (isLost) {
+      banner.style.background = '#fde8e8';
+      banner.style.borderColor = '#e57373';
+      banner.querySelector('.avatar').style.background = '#d0d0d0';
+      bannerText.innerHTML = '<strong>Proxy actor (Admin User) has lost access</strong> to Residential properties. Field fetch is broken.';
+      rcfEl.innerHTML = '<span class="lock-value">🔒 Private object</span>';
+      document.getElementById('u2-lcf-value').innerHTML = '<span class="lock-value">🔒 Private value</span>';
+      noticeEl.className = 'notice notice-danger';
+      noticeText.textContent = 'Because the proxy lost access, the field can no longer fetch values. Users see nothing — not "Private value", just blank. There is no graceful suppression; the field is simply broken.';
+    } else {
+      banner.style.background = '#f7f7f8';
+      banner.style.borderColor = '#e0e0e0';
+      banner.querySelector('.avatar').style.background = '#4573d2';
+      // re-render for current user role
+      const activeRole = document.querySelector('#u2-admin.active') ? 'admin'
+                       : document.querySelector('#u2-member.active') ? 'member' : 'outsider';
+      setUser2(activeRole);
+    }
+  }
+
+  function setUser2(role) {
+    ['admin','member','outsider'].forEach(r => {
+      document.getElementById('u2-' + r).classList.toggle('active', r === role);
+    });
+
+    // If proxy has lost access, only update the label — keep private values intact
+    if (u2Scenario === 'lost') {
+      const labels = { admin: 'Admin / Field creator', member: 'Task member (no record access)', outsider: 'External collaborator' };
+      document.getElementById('u2-pov-label').textContent = 'Task view — ' + labels[role];
+      return;
+    }
+
+    const rcfEl = document.getElementById('u2-rcf-value');
+    const noticeEl = document.getElementById('u2-notice');
+    const noticeText = document.getElementById('u2-notice-text');
+    const banner = document.getElementById('u2-banner-text');
+    const lcfEl = document.getElementById('u2-lcf-value');
+
+    // Restore the LCF value (may have been cleared by lost-access scenario)
+    lcfEl.innerHTML = '<span class="pill pill-high"><span class="pill-dot dot-high"></span>High</span>';
+
+    if (role === 'admin') {
+      document.getElementById('u2-pov-label').textContent = 'Task view — Admin / Field creator';
+      banner.innerHTML = 'Values fetched using <strong>your</strong> access to Residential properties — you are the proxy actor.';
+      rcfEl.innerHTML = '<span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>';
+      noticeEl.className = 'notice notice-info';
+      noticeText.textContent = 'You created these fields and are the proxy actor. You see these values because you have direct access to Residential properties.';
+    } else if (role === 'member') {
+      document.getElementById('u2-pov-label').textContent = 'Task view — Task member (no record access)';
+      banner.innerHTML = 'Values fetched using <strong>Admin User\'s</strong> access — not yours. You don\'t have access to Residential properties, but the proxy does.';
+      rcfEl.innerHTML = '<span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>';
+      noticeEl.className = 'notice notice-warning';
+      noticeText.textContent = 'You see "Oak Street Complex" and "High" not because you have access to that record — but because Admin User (the proxy) does. The system fetched these values on their behalf and is showing them to you.';
+    } else {
+      document.getElementById('u2-pov-label').textContent = 'Task view — External collaborator';
+      banner.innerHTML = 'Values fetched using <strong>Admin User\'s</strong> access — not yours.';
+      rcfEl.innerHTML = '<span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>';
+      noticeEl.className = 'notice notice-danger';
+      noticeText.textContent = 'You have no access to Residential properties — but because the proxy fetched these values, you can see them anyway. This is the core risk: the proxy model leaks data to anyone on the task, regardless of their own permissions.';
+    }
+  }
+
+  /* ── Option 3 user switch ── */
+  function setUser3(role) {
+    ['full','partial','guest'].forEach(r => {
+      document.getElementById('u3-' + r).classList.toggle('active', r === role);
+    });
+
+    const labels = { full: 'Full access user', partial: 'Task member (no record access)', guest: 'Guest (no project access)' };
+    document.getElementById('u3-pov-label').textContent = 'Task view — ' + labels[role];
+    document.getElementById('u3-checks-label').textContent = 'Server-side AC checks for: ' + labels[role];
+
+    const c1 = document.getElementById('u3-c1');
+    const c2 = document.getElementById('u3-c2');
+    const c3 = document.getElementById('u3-c3');
+    const c4 = document.getElementById('u3-c4');
+    const result = document.getElementById('u3-result');
+    const rcf = document.getElementById('u3-rcf');
+    const lcf = document.getElementById('u3-lcf');
+    const notice = document.getElementById('u3-task-notice');
+
+    if (role === 'full') {
+      setCheck(c1, true, 'Check 1: User can see the task → pass');
+      setCheck(c2, true, 'Check 2: User can read the RCF (Buildings) → pass');
+      setCheck(c3, true, 'Check 3: User has read access to source collection (Residential properties) → pass');
+      setCheck(c4, true, 'Check 4: Linked record (Oak Street Complex) is visible to user → pass');
+      result.style.background = '#edf7f2'; result.style.color = '#1a7f4b';
+      result.innerHTML = '✅ All checks pass — return value: <strong>High</strong>';
+      rcf.innerHTML = '<span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>';
+      lcf.innerHTML = '<span class="pill pill-high"><span class="pill-dot dot-high"></span>High</span>';
+      notice.className = 'notice notice-success';
+      notice.innerHTML = '<span class="notice-icon">✅</span><div style="font-size:12px;">You have access to the linked record. Full value returned.</div>';
+
+    } else if (role === 'partial') {
+      setCheck(c1, true,  'Check 1: User can see the task → pass');
+      setCheck(c2, true,  'Check 2: User can read the RCF (Buildings) → pass');
+      setCheck(c3, false, 'Check 3: User has read access to source collection (Residential properties) → ✗ fail');
+      setCheck(c4, false, 'Check 4: Linked record (Oak Street Complex) is visible to user → skipped (blocked at step 3)');
+      result.style.background = '#fdf0f0'; result.style.color = '#c0392b';
+      result.innerHTML = '🔒 Access denied at step 3 — value suppressed: <strong>Private value</strong>';
+      rcf.innerHTML = '<span class="lock-value">🔒 Private object</span>';
+      lcf.innerHTML = '<span class="lock-value">🔒 Private value</span>';
+      notice.className = 'notice notice-warning';
+      notice.innerHTML = '<span class="notice-icon">⚠️</span><div style="font-size:12px;">AC check failed at source collection level. Value suppressed — user sees "Private value".</div>';
+
+    } else {
+      setCheck(c1, false, 'Check 1: User can see the task → ✗ fail (not a task member)');
+      setCheck(c2, false, 'Check 2: User can read the RCF (Buildings) → skipped');
+      setCheck(c3, false, 'Check 3: User has read access to source collection → skipped');
+      setCheck(c4, false, 'Check 4: Linked record visible? → skipped');
+      result.style.background = '#fdf0f0'; result.style.color = '#c0392b';
+      result.innerHTML = '🔒 Access denied at step 1 — field not returned at all';
+      rcf.innerHTML = '<span class="lock-value">🔒 Private object</span>';
+      lcf.innerHTML = '<span class="lock-value">🔒 Private value</span>';
+      notice.className = 'notice notice-danger';
+      notice.innerHTML = '<span class="notice-icon">🔒</span><div style="font-size:12px;">Guest has no task access. Field is not returned in API response.</div>';
+    }
+  }
+
+  function setCheck(el, pass, text) {
+    el.className = 'chain-check ' + (pass ? 'pass' : 'fail');
+    el.innerHTML = '<span class="chain-check-icon">' + (pass ? '✅' : '❌') + '</span><div><strong>' + text.split(':')[0] + ':</strong> ' + text.split(':').slice(1).join(':') + '</div>';
+  }
+</script>
+</body>
+</html>

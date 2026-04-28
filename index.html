@@ -788,15 +788,28 @@
             </div>
             <div class="field-group">
               <div class="field-label">Reference field <span class="required">*</span></div>
-              <div class="field-select">
-                <div class="field-select-inner"><span>🔗</span> Buildings</div>
-                <span class="chevron">∨</span>
+              <select id="s1-rcf-select" onchange="onRcfChange(this.value)" style="width:100%;padding:10px 14px;border:1.5px solid #d0d0d0;border-radius:8px;font-size:14px;color:#1e1f21;background:#fff;appearance:none;cursor:pointer;">
+                <option value="buildings">🔗  Buildings  (access grant: on)</option>
+                <option value="managers">🔗  Building managers  (access grant: off)</option>
+              </select>
+            </div>
+
+            <!-- Warning shown when selected RCF has no access grant -->
+            <div id="s1-rcf-warning" style="display:none;margin-bottom:16px;" class="notice notice-warning">
+              <span class="notice-icon">⚠️</span>
+              <div>
+                Some users may not have access to these linked records.
+                <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="s1-grant-via-lookup" onchange="onLookupGrantChange(this.checked)" />
+                  Grant view access to linked records for all task members
+                </label>
               </div>
             </div>
+
             <div class="field-group">
               <div class="field-label">Field to look up <span class="required">*</span></div>
               <div class="field-select">
-                <div class="field-select-inner"><span>⊙</span> Priority</div>
+                <div class="field-select-inner" id="s1-lookup-field-val"><span>⊙</span> Priority</div>
                 <span class="chevron">∨</span>
               </div>
             </div>
@@ -805,7 +818,7 @@
             <span class="footer-left">Advanced settings</span>
             <div class="btn-group">
               <button class="btn btn-secondary">Cancel</button>
-              <button class="btn btn-primary">Create field</button>
+              <button class="btn btn-primary" id="s1-create-btn">Create field</button>
             </div>
           </div>
         </div>
@@ -830,7 +843,7 @@
             </div>
           </div>
           <div class="task-field-row">
-            <div class="task-field-name">Buildings</div>
+            <div class="task-field-name" id="s1-tv-rcf-label">Buildings</div>
             <div class="task-field-value" id="s1-tv-buildings">
               <span style="color:#4573d2;cursor:pointer;text-decoration:underline;">🔗 Oak Street Complex</span>
             </div>
@@ -1251,6 +1264,41 @@
 
 
 <script>
+  /* ── Option 1 RCF selector ── */
+  function onRcfChange(val) {
+    const warning = document.getElementById('s1-rcf-warning');
+    const lookupField = document.getElementById('s1-lookup-field-val');
+    const createBtn = document.getElementById('s1-create-btn');
+    const checkbox = document.getElementById('s1-grant-via-lookup');
+    if (val === 'managers') {
+      warning.style.display = 'flex';
+      lookupField.innerHTML = '<span>⊙</span> Manager name';
+      checkbox.checked = false;
+      createBtn.disabled = true;
+      createBtn.style.opacity = '0.45';
+      createBtn.style.cursor = 'not-allowed';
+      document.getElementById('s1-tv-rcf-label').textContent = 'Building managers';
+    } else {
+      warning.style.display = 'none';
+      lookupField.innerHTML = '<span>⊙</span> Priority';
+      createBtn.disabled = false;
+      createBtn.style.opacity = '';
+      createBtn.style.cursor = '';
+      document.getElementById('s1-tv-rcf-label').textContent = 'Buildings';
+    }
+    // also update task view
+    document.getElementById('s1-grant-checkbox').checked = val === 'buildings';
+    toggleGrantAccess(val === 'buildings');
+  }
+
+  function onLookupGrantChange(checked) {
+    const createBtn = document.getElementById('s1-create-btn');
+    createBtn.disabled = !checked;
+    createBtn.style.opacity = checked ? '' : '0.45';
+    createBtn.style.cursor = checked ? '' : 'not-allowed';
+    toggleGrantAccess(checked);
+  }
+
   /* ── Option 1 access grant toggle ── */
   function toggleGrantAccess(checked) {
     const buildings = document.getElementById('s1-tv-buildings');
